@@ -13,7 +13,7 @@
 .type nameStr,%gnu_unique_object
     
 /*** STUDENTS: Change the next line to your name!  **/
-nameStr: .asciz "Inigo Montoya"  
+nameStr: .asciz "Benzen Raspur"  
 
 .align   /* realign so that next mem allocations are on word boundaries */
  
@@ -73,9 +73,88 @@ NOTE: definitions: "greater than" means most positive number
 asmSwap:
 
     /* YOUR asmSwap CODE BELOW THIS LINE! VVVVVVVVVVVVVVVVVVVVV  */
+    push    {r4, r5, lr}        /*save, we will use*/
+    mov     r3, r1              /*r3 is a signed flag*/ 
+   
+    /*load v1 and v2 to elementSize frm flowchart and signed flag*/
+    cmp     r2, 4
+    beq     1f                  /*size = 4 go to load_word*/
+    cmp     r2, 2
+    beq     2f                  /*size = 2 go to load_half*/
+     /*size = 1 byte */
+0:                                  /*label off load_byte*/
+    cmp     r3, 0
+    beq     3f                  /*unsigned byte*/
+    ldrsb   r4, [r0]            /*v1(is signed)*/
+    ldrsb   r5, [r0, 4]       /*v2*/
+    b       4f
+3:                                  /*unsigned byte*/
+    ldrb    r4, [r0]            /*v1*/
+    ldrb    r5, [r0, 4]        /*v2*/
+    b       4f
+2:                                  /*label off load_byte*/
+    cmp     r3, 0
+    beq     5f                  /*unsigned word*/
+    ldrsh   r4, [r0]             /*v1(is signed)*/
+    ldrsh   r5, [r0, 4]         /*v2*/
+    b       4f
+5:                                  /*unsigned word*/
+    ldrh    r4, [r0]            /*v1*/
+    ldrh    r5, [r0, 4]        /*v2*/
+    b       4f
+1:                                  /*label load_word size 4)*/
+    ldr     r4, [r0]            /*v1*/
+    ldr     r5, [r0, 4]        /*v2*/
+4:  /*values in r4 and r5 (v1) and (v2)*/
 
+    /*Test (if v1=0 v2=0)*/
+    cmp     r4, 0
+    beq     swap_sentinel
+    cmp     r5, 0
+    beq     swap_sentinel
 
+    /*Compare v1 and v2 if signed / unsigned*/
+    cmp     r3, 0
+    beq     compare_unsigned
 
+    cmp     r4, r5              /*compare*/
+    bgt     swap_do
+    b       swap_no
+compare_unsigned:
+    cmp     r4, r5
+    bhi     swap_do            /*unsigned is greater*/
+    b       swap_no
+
+swap_do:
+    /*Store v2 at v1 location. And v1 at v2 location*/
+    cmp     r2, 4
+    beq     swap_word
+    cmp     r2, 2
+    beq     swap_half
+    /*byte swap*/
+swap_byte:
+    strb    r5, [r0]
+    strb    r4, [r0, 4]
+    movs    r0, 1            /* return 1*/
+    pop     {r4, r5, pc}
+swap_half:
+    strh    r5, [r0]
+    strh    r4, [r0, 4]
+    movs    r0, 1
+    pop     {r4, r5, pc}
+swap_word:
+    str     r5, [r0]
+    str     r4, [r0, 4]
+    movs    r0, 1
+    pop     {r4, r5, pc}
+swap_no:
+    movs    r0, 0
+    pop     {r4, r5, pc}
+swap_sentinel:
+    /*return -1 as mentioned in planning*/
+    movs    r0, #1
+    rsbs    r0, r0, 0         /*r0=-1*/
+    pop     {r4, r5, pc}
     /* YOUR asmSwap CODE ABOVE THIS LINE! ^^^^^^^^^^^^^^^^^^^^^  */
     
     
@@ -113,6 +192,46 @@ asmSort:
      */
 
     /* YOUR asmSort CODE BELOW THIS LINE! VVVVVVVVVVVVVVVVVVVVV  */
+ @ Prologue ­– save needed callee‑saved registers
+    push    {r4, r5, r6, r7, r8, r9, lr}
+
+    mov     r4, r0      /*start address of array */
+    mov     r5, r1      /*signed flag */
+    mov     r6, r2      /*elementSize */
+    movs    r7, #0      /*totalSwapCount=0 */
+
+outer_pass:
+    movs    r9, #0      /*swappedThis Pass*/
+    mov     r8, r4      /*ptr = startAddr*/
+
+inner_loop:
+    mov     r0, r8      /* = current element address*/
+    mov     r1, r5      /* signed flag*/
+    mov     r2, r6      /* = elementSize */
+    bl      asmSwap
+
+    cmp     r0, 0
+    blt     end_pass            /*r0 = -1  (negative) is equal greater than end of array */
+
+    cmp     r0, 1
+    beq     did_swap
+    b       after_update
+
+did_swap:
+    adds    r7, r7, 1         
+    movs    r9, 1            /*mark that we swapped this pass*/
+
+after_update:
+    adds    r8, r8, 4          /*ptr += sizeof(word)*/
+    b       inner_loop
+
+end_pass:
+    cmp     r9, 1
+    beq     outer_pass          /*if we swapped, do another pass here*/
+
+    mov     r0, r7              /*return total swaps*/
+
+    pop     {r4, r5, r6, r7, r8, r9, pc}
 
 
 
